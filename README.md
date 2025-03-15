@@ -8,14 +8,7 @@
 - [Parameters](#parameters)
 - [Simple ViT](#simple-vit)
 - [3D Vit](#3d-vit)
-- [Parallel ViT](#parallel-vit)
 - [Accessing Attention](#accessing-attention)
-- [Research Ideas](#research-ideas)
-  * [Efficient Attention](#efficient-attention)
-  * [Combining with other Transformer improvements](#combining-with-other-transformer-improvements)
-- [FAQ](#faq)
-- [Resources](#resources)
-- [Citations](#citations)
 
 ## Vision Transformer - Pytorch
 
