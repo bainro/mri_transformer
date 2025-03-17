@@ -1,4 +1,5 @@
 # @TODO extract labels!
+# @TODO figure out which subject ID is which subject NPY file!
 
 import os
 import cupy as cp
@@ -14,10 +15,8 @@ os.environ["QUASIRAW_MASK"] = "./quasiraw_space-MNI152_desc-brain_T1w.nii.gz"
 # Create output directory
 directory = "subjects"
 os.makedirs(directory, exist_ok=True)
-directory = "subjects/train"
-os.makedirs(directory, exist_ok=True)
-directory = "subjects/test"
-os.makedirs(directory, exist_ok=True)
+os.makedirs("subjects/train", exist_ok=True)
+os.makedirs("subjects/test", exist_ok=True)
 
 for k, data_loader in enumerate([get_train_data, get_test_data]):
     data = DatasetHelper(data_loader=data_loader)
