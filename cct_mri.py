@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from vit_pytorch.cct_3d import CCT
 
 cct = CCT(
@@ -21,13 +22,16 @@ cct = CCT(
     frame_pooling_padding = 1,
     num_layers = 10, # default was 14
     num_heads = 6, # parallel attn fxs. Same input can go thru different W_k & W_q's.
-    mlp_ratio = 3., # how many neurons in a Transformer block's FC layers. Bigger # = more neurons, more compute.
-    num_classes = 1, # we're going to regress certain brain volumes (e.g. white matter) & use MSE loss
+    mlp_ratio = 2., # how many neurons in a Transformer block's FC layers. Bigger = more neurons. 
+    num_classes = 1, # we're going to regress (e.g. white matter) & use MSE loss
     positional_embedding = 'sine'
 )
 
-# we'll need more than 1 data pt in our batch
-# we'll have way more than 8 'frames' because our frames our slices
-video = torch.randn(1, 1, 128, 128, 128) # (batch, channels, frames, height, width)
+# shape: (1, 128, 128, 128)
+t1 = np.load("./subjects/0000_T1.npy")
+# add the batch dimension: (1, 1, 128, 128, 128)
+t1 = np.expand_dims(t1, axis=0)
+# convert from np array to torch tensor of dtype float32
+t1 = torch.from_numpy(t1).to(torch.float32)
 
-pred = cct(video)
+pred = cct(t1)
