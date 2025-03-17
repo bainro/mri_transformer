@@ -67,59 +67,86 @@ if __name__ == "__main__":
     test_loader = DataLoader(MRIDataset(split="test"), batch_size=8, shuffle=False)
 
     # Model, loss, optimizer
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-    model = CCT(
-        img_size = 128,
-        num_frames = 128,
-        embedding_dim = 384,
-        n_conv_layers = 5, # increase after things are working!
-        n_input_channels=1,
-        frame_kernel_size = 3, # decrease after things are working
-        kernel_size = 3, # decrease after things are working
-        stride = 2,
-        frame_stride = 2,
-        padding = 3,
-        frame_padding= 3,
-        pooling_kernel_size = 3,
-        frame_pooling_kernel_size = 3,
-        pooling_stride = 2,
-        frame_pooling_stride = 2,
-        pooling_padding = 1,
-        frame_pooling_padding = 1,
-        num_layers = 10, # default was 14
-        num_heads = 6, # parallel attn fxs. Same input can go thru different W_k & W_q's.
-        mlp_ratio = 2., # how many neurons in a Transformer block's FC layers. Bigger = more neurons. 
-        num_classes = 1, # we're going to regress (e.g. white matter) & use MSE loss
-        positional_embedding = 'sine'
-    ).to(device)
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # Training loop
-    num_epochs = 200
-    best_loss = float("inf") # Initialize best loss as infinity
-    save_path = "best_cct_model.pth"  # File to save the best model
-    train_losses = []
-    test_losses = []
-    
-    dt_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for epoch in range(num_epochs):
-        train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
-        train_losses.append(train_loss)
-        test_loss = test_epoch(model, test_loader, criterion, device)
-        test_losses.append(test_loss)
-        print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}")
+    best_grid_loss = 1e9
+    best_emb_dim = None
+    best_n_c_l = None
+    best_n_l = None
+    best_mlp_ratio = None
 
-        # Save model if test loss improves
-        if test_loss < best_loss:
-            best_loss = test_loss
-            torch.save(model.state_dict(), save_path)
-            print(f"Saved Best Model (Epoch {epoch+1})")
+    j = -1
+    for emb_dim in [420, 504]:
+        for n_c_l in [7, 9]:
+            for n_l in [12, 14]:
+                for mlp_ratio in [3., 4.]:
+                    j += 1
+                    model = CCT(
+                        img_size = 128,
+                        num_frames = 128,
+                        embedding_dim = emb_dim, # 384
+                        n_conv_layers = n_c_l, # 5
+                        n_input_channels=1,
+                        frame_kernel_size = 3, 
+                        kernel_size = 3, 
+                        stride = 2,
+                        frame_stride = 2,
+                        padding = 3,
+                        frame_padding= 3,
+                        pooling_kernel_size = 3,
+                        frame_pooling_kernel_size = 3,
+                        pooling_stride = 2,
+                        frame_pooling_stride = 2,
+                        pooling_padding = 1,
+                        frame_pooling_padding = 1,
+                        num_layers = n_l, # 10
+                        num_heads = 6, # parallel attn fxs. Same input can go thru different W_k & W_q's.
+                        mlp_ratio = mlp_ratio, # 2.0 before. how many neurons in a Transformer block's FC layers.
+                        num_classes = 1, # we're going to regress (e.g. white matter) & use MSE loss
+                        positional_embedding = 'sine'
+                    ).to(device)
+                    criterion = nn.MSELoss()
+                    optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
-            with open(f"train_loss_{dt_str}.csv", 'w', newline='') as csv_file:
-                wr = csv.writer(csv_file)
-                wr.writerow(train_losses)
+                    # Training loop
+                    num_epochs = 15
+                    dt_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    save_path = f"best_cct_model_{dt_str}_{j}.pth"  # File to save the best model
+                    best_loss = float("inf") # Initialize best loss as infinity
+                    train_losses = []
+                    test_losses = []
+                    
+                    for epoch in range(num_epochs):
+                        try:
+                            train_loss = train_epoch(model, train_loader, criterion, optimizer, device)
+                        except:
+                            print(":c")
+                            continue
+                        train_losses.append(train_loss)
+                        test_loss = test_epoch(model, test_loader, criterion, device)
+                        test_losses.append(test_loss)
+                        print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}")
 
-            with open(f"test_loss_{dt_str}.csv", 'w', newline='') as csv_file:
-                wr = csv.writer(csv_file)
-                wr.writerow(test_losses)
+                        # Save model if test loss improves
+                        if test_loss < best_loss:
+                            # check if best loss in whole grid search too
+                            if test_loss < best_grid_loss:
+                                best_grid_loss = test_loss
+                                # keep the values to print at the end
+                                best_emb_dim = emb_dim
+                                best_n_c_l = n_c_l
+                                best_n_l = n_l
+                                best_mlp_ratio = mlp_ratio
+                            best_loss = test_loss
+                            torch.save(model.state_dict(), save_path)
+                            print(f"Saved Best Model (Epoch {epoch+1})")
+
+                            with open(f"train_loss_{dt_str}_{j}.csv", 'w', newline='') as csv_file:
+                                wr = csv.writer(csv_file)
+                                wr.writerow(train_losses)
+
+                            with open(f"test_loss_{dt_str}_{j}.csv", 'w', newline='') as csv_file:
+                                wr = csv.writer(csv_file)
+                                wr.writerow(test_losses)
+
+    print(f"best grid pms: emb_dim: {best_emb_dim}; num_conv_layers: {best_n_c_l}; num_layers: {best_n_l}; mlp_ratio: {best_mlp_ratio}")
