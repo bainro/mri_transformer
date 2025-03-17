@@ -38,6 +38,7 @@ def train_epoch(model, loader, criterion, optimizer, device):
         voxels, labels = voxels.to(device), labels.to(device)
 
         optimizer.zero_grad()
+        # @TODO see if rm'ing unsqueeze and later squeeze works
         outputs = model(voxels.unsqueeze(1))  # Add channel dimension
         loss = criterion(outputs.squeeze(), labels)
         loss.backward()
@@ -62,7 +63,7 @@ def test_epoch(model, loader, criterion, device):
 
 if __name__ == "__main__":
     # Load dataset
-    train_loader = DataLoader(MRIDataset(split="train"), batch_size=8, shuffle=True)
+    train_loader = DataLoader(MRIDataset(split="train"), batch_size=16, shuffle=True)
     test_loader = DataLoader(MRIDataset(split="test"), batch_size=8, shuffle=False)
 
     # Model, loss, optimizer
