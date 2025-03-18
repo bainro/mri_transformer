@@ -16,8 +16,6 @@ os.makedirs("subjects/train", exist_ok=True)
 os.makedirs("subjects/test", exist_ok=True)
 
 for k, data_loader in enumerate([get_train_data, get_test_data]):
-    if k == 0:
-        continue
     import pdb; pdb.set_trace()
     data = DatasetHelper(data_loader=data_loader)
     X, y = data.get_data()
